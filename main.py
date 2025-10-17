@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 import re
 from flask_cors import CORS
 
@@ -23,9 +24,15 @@ def get_transcript():
         
         video_id = match.group(1)
         
-        # FIXED: Use correct API method
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        transcript = transcript_list.find_transcript(['en']).fetch()
+        # Try different methods based on library version
+        try:
+            # Method 1: Try direct get_transcript
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+        except AttributeError:
+            # Method 2: Try list_transcripts if available
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            transcript = transcript_list.find_transcript(['en']).fetch()
+        
         full_text = ' '.join([entry['text'] for entry in transcript])
         
         return jsonify({
@@ -35,6 +42,8 @@ def get_transcript():
             'segments': len(transcript)
         })
         
+    except (TranscriptsDisabled, NoTranscriptFound) as e:
+        return jsonify({'error': f'Transcript not available: {str(e)}'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -22,9 +22,10 @@ def get_transcript():
             return jsonify({'error': 'Invalid YouTube URL'}), 400
         
         video_id = match.group(1)
+        
+        # FIXED: Use correct API method
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         transcript = transcript_list.find_transcript(['en']).fetch()
-
         full_text = ' '.join([entry['text'] for entry in transcript])
         
         return jsonify({
